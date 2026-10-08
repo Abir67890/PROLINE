@@ -1,7 +1,25 @@
-﻿"use client";
-import { useState } from "react";
+"use client";
 
-export type CategoryKey = "cuisine" | "machine" | "buanderie" | "sanitaire" | "communs" | "piscine";
+import PdfViewer from "@/components/PdfViewer";
+import {
+  useMemo,
+  useState,
+} from "react";
+
+import dynamic from "next/dynamic";
+
+const Catalogue3D = dynamic(
+  () => import("./catalogue/Catalogue3D"),
+  { ssr: false }
+);
+
+export type CategoryKey =
+  | "cuisine"
+  | "machine"
+  | "buanderie"
+  | "sanitaire"
+  | "communs"
+  | "piscine";
 
 export interface Product {
   code: string;
@@ -77,70 +95,280 @@ export const PRODUCTS: Product[] = [
     desc: "Traitement choc pour rattraper rapidement une eau verte ou trouble.",
     dosage: "15g par m³ d'eau directement dans le bassin.",
     cat: "piscine",
-  }
+  },
 ];
 
 type FilterKey = "all" | CategoryKey;
-const FILTERS: FilterKey[] = ["all", "cuisine", "machine", "buanderie", "sanitaire", "communs", "piscine"];
 
-export default function HomeCatalogueSection() {
-  const [filter, setFilter] = useState<FilterKey>("all");
-  const items = PRODUCTS.filter((p) => filter === "all" || p.cat === filter);
+const FILTERS: FilterKey[] = [
+  "all",
+  "cuisine",
+  "machine",
+  "buanderie",
+  "sanitaire",
+  "communs",
+  "piscine",
+];
+
+const CAT_META: Record<CategoryKey, string> = {
+  cuisine: "01",
+  machine: "02",
+  buanderie: "03",
+  sanitaire: "04",
+  communs: "05",
+  piscine: "06",
+};
+
+function ProductCard({
+  product,
+  index,
+}: {
+  product: Product;
+  index: number;
+}) {
+  const [flipped, setFlipped] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   return (
-    <section id="catalogue">
-      <div className="section-head reveal">
-        <div className="section-eyebrow">Catalogue</div>
-        <h2 className="section-title">Le catalogue complet, produit par produit</h2>
-        <p className="section-sub">Référence, conditionnement et dosage — la fiche se retourne au survol.</p>
-      </div>
+    <article
+      className={`monster-product ${flipped ? "is-flipped" : ""} ${
+        hovered ? "is-hovered" : ""
+      }`}
+      style={
+        {
+          "--delay": `${index * 70}ms`,
+          "--cat-color": `var(--color-cat-${product.cat}, var(--color-green))`,
+        } as React.CSSProperties
+      }
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => setFlipped((value) => !value)}
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setFlipped((value) => !value);
+        }
+      }}
+      aria-label={`${product.name}. Cliquer pour afficher le mode d'emploi.`}
+    >
+      <div className="monster-product-inner">
+        <div className="monster-product-face monster-product-front">
+          <div className="monster-product-top">
+            <span className="monster-product-code">
+              {product.code}
+            </span>
 
-      <div className="cat-filters">
-        {FILTERS.map((f) => {
-          const active = filter === f;
-          return (
-            <button
-              key={f}
-              className={`cat-filter-btn ${active ? "active" : ""}`}
-              onClick={() => setFilter(f)}
-              style={active ? { background: "var(--color-green)", color: "#fff", borderColor: "transparent" } : undefined}
-            >
-              {f === "all" ? "Tout voir" : CAT_LABELS[f]}
-            </button>
-          );
-        })}
-      </div>
+            <span className="monster-product-category">
+              {CAT_META[product.cat]} / {CAT_LABELS[product.cat]}
+            </span>
+          </div>
 
-      <div className="product-grid">
-        {items.map((p, i) => {
-          const catColorVar = `var(--color-cat-${p.cat}, var(--color-green))`;
+          <div className="monster-product-orb">
+            <span />
+          </div>
 
-          return (
-            <div 
-              className="product-card reveal" 
-              key={`${p.code}-${p.ref}-${i}`} 
-              style={{ "--cat": catColorVar } as React.CSSProperties}
-            >
-              <div className="card-inner">
-                <div className="card-face front">
-                  <div className="code">{p.code}</div>
-                  <div className="name">{p.name}</div>
-                  <div className="meta">
-                    <span>Réf. <b>{p.ref}</b></span>
-                    <span>{p.pack}</span>
-                  </div>
-                  <div className="desc">{p.desc}</div>
-                </div>
+          <div className="monster-product-content">
+            <span className="monster-product-kicker">
+              PROLINE PROFESSIONAL
+            </span>
 
-                <div className="card-face back">
-                  <div className="lbl">Mode d'emploi</div>
-                  <div className="dosage">{p.dosage}</div>
-                </div>
-              </div>
+            <h3>{product.name}</h3>
+
+            <p>{product.desc}</p>
+          </div>
+
+          <div className="monster-product-meta">
+            <div>
+              <small>RÉFÉRENCE</small>
+              <strong>{product.ref}</strong>
             </div>
-          );
-        })}
+
+            <div>
+              <small>CONDITIONNEMENT</small>
+              <strong>{product.pack}</strong>
+            </div>
+          </div>
+
+          <div className="monster-product-footer">
+            <span>RETOURNER LA FICHE</span>
+            <b>↗</b>
+          </div>
+        </div>
+
+        <div className="monster-product-face monster-product-back">
+          <div className="monster-back-grid" />
+
+          <span className="monster-product-kicker">
+            PROLINE · PROTOCOLE
+          </span>
+
+          <h3>Mode d'emploi</h3>
+
+          <div className="monster-dosage">
+            <span>DOSAGE RECOMMANDÉ</span>
+            <strong>{product.dosage}</strong>
+          </div>
+
+          <div className="monster-back-info">
+            <span>CATÉGORIE</span>
+            <strong>{CAT_LABELS[product.cat]}</strong>
+          </div>
+
+          <div className="monster-back-info">
+            <span>RÉFÉRENCE</span>
+            <strong>{product.ref}</strong>
+          </div>
+
+          {product.pdf && (
+            <div
+              className="monster-pdf-wrapper"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <PdfViewer url={encodeURI(product.pdf)} title={product.name} />
+            </div>
+          )}
+          <button
+            type="button"
+            className="monster-return"
+            onClick={(event) => {
+              event.stopPropagation();
+              setFlipped(false);
+            }}
+          >
+            <span>Retourner</span>
+            <b>↩</b>
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export default function Catalogue() {
+  const [filter, setFilter] = useState<FilterKey>("all");
+
+  const items = useMemo(
+    () =>
+      PRODUCTS.filter(
+        (product) => filter === "all" || product.cat === filter
+      ),
+    [filter]
+  );
+
+  return (
+    <section
+      id="catalogue"
+      className="catalogue-monster"
+    >
+      <div className="catalogue-monster-noise" />
+
+      <div className="catalogue-monster-header">
+        <div className="catalogue-monster-copy">
+          <span className="catalogue-monster-eyebrow">
+            <i />
+            CATALOGUE · PROLINE LAB
+          </span>
+
+          <h2>
+            Le catalogue complet,
+            <br />
+            <em>produit par produit.</em>
+          </h2>
+
+          <p>
+            Référence, conditionnement et dosage —
+            la fiche se retourne au survol.
+          </p>
+
+          <div className="catalogue-monster-stats">
+            <div>
+              <strong>{PRODUCTS.length}</strong>
+              <span>PRODUITS</span>
+            </div>
+
+            <div>
+              <strong>06</strong>
+              <span>ENVIRONNEMENTS</span>
+            </div>
+
+            <div>
+              <strong>24/7</strong>
+              <span>PERFORMANCE</span>
+            </div>
+          </div>
+        </div>
+
+        <Catalogue3D />
+      </div>
+
+      <div className="catalogue-monster-controls">
+        <div className="catalogue-filter-label">
+          <span>Explorer</span>
+          <strong>
+            {filter === "all"
+              ? "Tous les produits"
+              : CAT_LABELS[filter]}
+          </strong>
+        </div>
+
+        <div className="cat-filters monster-filters">
+          {FILTERS.map((item) => {
+            const active = filter === item;
+
+            return (
+              <button
+                key={item}
+                type="button"
+                className={`cat-filter-btn cat-filter-${item} ${
+                  active ? "active" : ""
+                }`}
+                data-category={item === "all" ? undefined : item}
+                onClick={() => setFilter(item)}
+              >
+                <span>
+                  {item === "all"
+                    ? "Tout voir"
+                    : CAT_LABELS[item]}
+                </span>
+
+                <small>
+                  {item === "all"
+                    ? String(PRODUCTS.length).padStart(2, "0")
+                    : String(
+                        PRODUCTS.filter(
+                          (product) => product.cat === item
+                        ).length
+                      ).padStart(2, "0")}
+                </small>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="monster-product-grid">
+        {items.map((product, index) => (
+          <ProductCard
+            key={`${product.code}-${product.ref}`}
+            product={product}
+            index={index}
+          />
+        ))}
+      </div>
+
+      <div className="catalogue-monster-bottom">
+        <span>
+          PROLINE HYGIENE · PROFESSIONAL SOLUTIONS
+        </span>
+
+        <span>
+          {String(items.length).padStart(2, "0")} RÉFÉRENCES
+        </span>
       </div>
     </section>
   );
 }
+
+
+
